@@ -6,7 +6,11 @@
     </head>
     <body>
         <audio id="clearsound" src="sound/pop.ogg" preload="auto"></audio>
-        <canvas width='300' height='600'></canvas>
+        <div>
+            <canvas id="hold_c" width="120" height='120'></canvas>
+            <canvas id="main_c" width='300' height='600'></canvas>
+            SCORE:<output id="score"></output>
+        </div>
         <script src='js/tetris.js'></script>
         <script src='js/controller.js'></script>
         <script src='js/render.js'></script>

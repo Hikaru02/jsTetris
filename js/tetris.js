@@ -4,21 +4,54 @@ var lose;  // 一番うえまで積み重なっちゃったフラグ
 var interval;  // ゲームタイマー保持用変数
 var current; // 現在操作しているブロック
 var currentX, currentY; // 現在操作しているブロックのいち
+var score;
+var holded;
+var hold_used;
+var shuffle;
 // ブロックのパターン
 var shapes = [
-  [ 1, 1, 1, 1 ],
-  [ 1, 1, 1, 0,
-    1 ],
-  [ 1, 1, 1, 0,
-    0, 0, 1 ],
-  [ 1, 1, 0, 0,
-    1, 1 ],
-  [ 1, 1, 0, 0,
-    0, 1, 1 ],
-  [ 0, 1, 1, 0,
-    1, 1 ],
-  [ 0, 1, 0, 0,
-    1, 1, 1 ]
+    [
+        [ 0, 0, 1, 0 ],
+        [ 0, 0, 1, 0 ],
+        [ 0, 0, 1, 0 ],
+        [ 0, 0, 1, 0 ],
+    ],
+    [
+        [ 0, 0, 0, 0 ],
+        [ 0, 1, 1, 1 ],
+        [ 0, 1, 0, 0 ],
+        [ 0, 0, 0, 0 ],
+    ],
+    [
+        [ 0, 0, 0, 0 ],
+        [ 1, 1, 1, 0 ],
+        [ 0, 0, 1, 0 ],
+        [ 0, 0, 0, 0 ],
+    ],
+    [
+        [ 0, 0, 0, 0 ],
+        [ 0, 1, 1, 0 ],
+        [ 0, 1, 1, 0 ],
+        [ 0, 0, 0, 0 ],
+    ],
+    [
+        [ 0, 0, 0, 0 ],
+        [ 1, 1, 0, 0 ],
+        [ 0, 1, 1, 0 ],
+        [ 0, 0, 0, 0 ],
+    ],
+    [
+        [ 0, 0, 0, 0 ],
+        [ 0, 0, 1, 1 ],
+        [ 0, 1, 1, 0 ],
+        [ 0, 0, 0, 0 ],
+    ],
+    [
+        [ 0, 0, 0, 0 ],
+        [ 0, 1, 0, 0 ],
+        [ 1, 1, 1, 0 ],
+        [ 0, 0, 0, 0 ],
+    ],
 ];
 // ブロックの色
 var colors = [
@@ -27,19 +60,29 @@ var colors = [
 
 // shapesからランダムにブロックのパターンを出力し、盤面の一番上へセットする
 function newShape() {
-  var id = Math.floor( Math.random() * shapes.length );  // ランダムにインデックスを出す
+  if(shuffle.length==0){
+      for(var i=0;i<shapes.length;i++){
+          shuffle.push(i);
+      }
+      console.log(shuffle);
+      for(var i=0;i<shapes.length;i++){
+          var dest=Math.floor( Math.random() * shapes.length );
+          var buf=shuffle[dest];
+          shuffle[dest]=shuffle[i];
+          shuffle[i]=buf;
+      }
+      console.log(shuffle);
+  }
+
+  var id = shuffle[0];  // ランダムにインデックスを出す
+  shuffle.shift();
   var shape = shapes[ id ];
   // パターンを操作ブロックへセットする
-  current = [];
+  current=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],];
   for ( var y = 0; y < 4; ++y ) {
-    current[ y ] = [];
     for ( var x = 0; x < 4; ++x ) {
-      var i = 4 * y + x;
-      if ( typeof shape[ i ] != 'undefined' && shape[ i ] ) {
+      if ( shape[y][x] ) {
         current[ y ][ x ] = id + 1;
-      }
-      else {
-        current[ y ][ x ] = 0;
       }
     }
   }
@@ -56,13 +99,29 @@ function init() {
       board[ y ][ x ] = 0;
     }
   }
+  hold_space=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],];
+}
+
+function hold() {
+    if(hold_used)return;
+    if(holded){
+        var buf=current;
+        current=hold_space;
+        hold_space=buf;
+    }else{
+        hold_space=current;
+        newShape();
+    }
+    hold_used=true;
 }
 
 // newGameで指定した秒数毎に呼び出される関数。
 // 操作ブロックを下の方へ動かし、
 // 操作ブロックが着地したら消去処理、ゲームオーバー判定を行う
 function tick() {
+    document.getElementById('score').innerHTML=score.toString();
   // １つ下へ移動する
+  if(lose)return false;
   if ( valid( 0, 1 ) ) {
     ++currentY;
   }
@@ -70,11 +129,6 @@ function tick() {
   else {
     freeze();  // 操作ブロックを盤面へ固定する
     clearLines();  // ライン消去処理
-    if (lose) {
-      // もしゲームオーバなら最初から始める
-      newGame();
-      return false;
-    }
     // 新しい操作ブロックをセットする
     newShape();
   }
@@ -89,6 +143,7 @@ function freeze() {
       }
     }
   }
+  hold_used=false;
 }
 
 // 操作ブロックを回す処理
@@ -114,6 +169,7 @@ function clearLines() {
         break;
       }
     }
+    var combo=0;
     // もし一行揃っていたら, サウンドを鳴らしてそれらを消す。
     if ( rowFilled ) {
       document.getElementById( 'clearsound' ).play();  // 消滅サウンドを鳴らす
@@ -124,7 +180,9 @@ function clearLines() {
         }
       }
       ++y;  // 一行落としたのでチェック処理を一つ下へ送る
+      combo++;
     }
+    score+=[0,1,4,9,100][combo];
   }
 }
 
@@ -132,27 +190,34 @@ function clearLines() {
 // キーボードが押された時に呼び出される関数
 function keyPress( key ) {
   switch ( key ) {
-  case 'left':
+  case 65: // A
     if ( valid( -1 ) ) {
       --currentX;  // 左に一つずらす
     }
     break;
-  case 'right':
+  case 68: // D
     if ( valid( 1 ) ) {
       ++currentX;  // 右に一つずらす
     }
     break;
-  case 'down':
+  case 83: //S
     if ( valid( 0, 1 ) ) {
       ++currentY;  // 下に一つずらす
     }
     break;
-  case 'rotate':
+  case 16:
+    hold();
+    break;
+  case 87: // W
     // 操作ブロックを回す
     var rotated = rotate( current );
     if ( valid( 0, 0, rotated ) ) {
       current = rotated;  // 回せる場合は回したあとの状態に操作ブロックをセットする
     }
+    break;
+  case 13: // Return
+    lose=false;
+    newGame();
     break;
   }
 }
@@ -168,18 +233,21 @@ function valid( offsetX, offsetY, newCurrent ) {
   for ( var y = 0; y < 4; ++y ) {
     for ( var x = 0; x < 4; ++x ) {
       if ( newCurrent[ y ][ x ] ) {
-        if ( typeof board[ y + offsetY ] == 'undefined'
-             || typeof board[ y + offsetY ][ x + offsetX ] == 'undefined'
-             || board[ y + offsetY ][ x + offsetX ]
-             || x + offsetX < 0
-             || y + offsetY >= ROWS
-             || x + offsetX >= COLS ) {
-               if (offsetY == 1 && offsetX-currentX == 0 && offsetY-currentY == 1){
-                 console.log('game over');
-                 lose = true; // もし操作ブロックが盤面の上にあったらゲームオーバーにする
-               }
-               return false;
-             }
+        if(x + offsetX < 0){
+              currentX++;
+              offsetX++;
+              continue;
+          }else if(x + offsetX >= COLS ) {
+              currentX--;
+              offsetX--;
+              continue;
+          }else if (y + offsetY >= ROWS || board[ y + offsetY ][ x + offsetX ]){
+            if (offsetY == 1 && offsetX-currentX == 0 && offsetY-currentY == 1){
+                console.log('game over');
+                lose = true; // もし操作ブロックが盤面の上にあったらゲームオーバーにする
+            }
+            return false;
+        }
       }
     }
   }
@@ -187,11 +255,15 @@ function valid( offsetX, offsetY, newCurrent ) {
 }
 
 function newGame() {
+  shuffle=[];
   clearInterval(interval);  // ゲームタイマーをクリア
   init();  // 盤面をまっさらにする
   newShape();  // 新しい
+
   lose = false;
-  interval = setInterval( tick, 250 );  // 250ミリ秒ごとにtickという関数を呼び出す
+  score=0;
+  hold_used=false;
+  interval = setInterval( tick, 500 );  // 250ミリ秒ごとにtickという関数を呼び出す
 }
 
 newGame();  // ゲームを開始する
